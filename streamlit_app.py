@@ -71,6 +71,7 @@ def sidebar():
                 f"- **날짜** 회의일 = 영수증 거래일, 1일 1회\n"
                 f"- **장소** 음식점·카페 불가 (강의실·동아리실·회의실)\n"
                 f"- **사진** 필수, 참석 인원 모두 촬영")
+            st.caption("판정 제외: 참석자 자격(신청서 명단 반영 예정), 1일 1회·월 한도(누적 이력 필요)")
             with st.expander("규칙 원문"):
                 for key in ("meeting_date_freq_rule", "meeting_place_rule",
                             "meeting_photo_rule", "meeting_content_rule", "receipt_attach_rule",
@@ -247,6 +248,11 @@ def section_first(r: dict):
                 f'<h4>{c["id"]} {c["name"]}</h4><p>{c["evidence"]}</p>'
                 f'<p class="muted">기준: {c["rule_text"]}</p></div>',
                 unsafe_allow_html=True)
+
+    oos = r.get("out_of_scope", [])
+    if oos:
+        st.caption("판정 범위 밖 (확인필요로 세지 않음): "
+                   + " · ".join(f"{x['name']} — {x['reason']}" for x in oos))
 
     if r["fix_requests"]:
         st.markdown("**제출자에게 보낼 보완 요청** (오른쪽 위 아이콘으로 복사)")

@@ -219,14 +219,17 @@ def compute_checks(rules: dict, s: dict) -> tuple[dict, list]:
     add("C11", "회의사진", r11, f"{ev11}. 판독 메모: {note or '없음'}",
         "meeting_photo_rule", by="코드+AI")
 
-    add("C12", "참석자 자격", "확인필요",
-        "이름만으로 참여학과·재학 여부 확인 불가. 별도 명단 대조 필요",
-        "meeting_eligibility_rule")
-    add("C13", "1일 1회·월 한도", "확인필요",
-        "이 서류 1건으로는 판단 불가. 같은 팀의 다른 제출 건과 대조 필요",
-        "meeting_date_freq_rule, monthly_budget")
+    # 참석자 자격(신청서 회원 명단 필요)과 1일 1회·월 한도(같은 팀 누적 이력 필요)는
+    # 이 서류 1건으로 판정할 수 없어 검사 항목에서 제외한다. → OUT_OF_SCOPE
 
     return calc, checks
+
+
+# 판정에서 제외한 기준 (화면·보고서·Review Agent 입력에 '범위 밖'으로만 표시)
+OUT_OF_SCOPE = [
+    ("참석자 자격", "meeting_eligibility_rule", "신청서 회원 명단(학과·재학 여부)을 반영한 뒤 판정 예정"),
+    ("1일 1회·월 한도", "meeting_date_freq_rule, monthly_budget", "같은 팀의 다른 제출 건 누적 이력이 필요"),
+]
 
 
 ##################################################
@@ -282,14 +285,16 @@ def create_review_input(rules_path=RULES_JSON, submission_path=SUBMISSION_JSON,
         Paragraph("C. 코드 자동 계산 결과", HEADING),
         kv_table(list(calc.items())),
 
-        Paragraph("D. 검사 결과표 (C1~C13)", HEADING),
+        Paragraph("D. 검사 결과표 (C1~C11)", HEADING),
         check_table(checks),
 
         Paragraph("E. 종합 판정 기준", HEADING),
         Paragraph("1) C5(날짜 일치), C7(1인당 한도), C8(회의장소) 중 하나라도 미충족이면 '부적합'.<br/>"
                   "2) 그 외 미충족이 하나라도 있으면 '보완필요'.<br/>"
                   "3) 미충족이 없으면 '적합'. 확인필요 항목은 담당자 확인사항으로 남긴다.<br/>"
-                  "4) '참고' 항목은 종합 판정에 반영하지 않는다.", BODY),
+                  "4) '참고' 항목은 종합 판정에 반영하지 않는다.<br/>"
+                  "5) 판정 범위 밖: " + ", ".join(f"{n}({why})" for n, _, why in OUT_OF_SCOPE)
+                  + ". 이 항목은 판정하지 않으며 check_id·fix_requests·admin_notes에 넣지 않는다.", BODY),
         Spacer(1, 4),
         Paragraph("AI 판단 기준 — C8: 회의 장소가 음식점·카페이면 미충족, 강의실·동아리실·회의실 등이면 충족. "
                   "C9: 주제와 내용·결과가 구체적으로 작성되고 안내문 잔존이 '삭제됨'이면 충족. "

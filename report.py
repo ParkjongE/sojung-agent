@@ -50,6 +50,9 @@ def build_report(result: dict) -> str:
             k["id"], k["name"], k["rule_text"], k["submitted"],
             k["result"], k["evidence"], k["by"])) + " |")
 
+    if result.get("out_of_scope"):
+        lines += ["", "## 판정 범위 밖", ""]
+        lines += [f"- {x['name']}: {x['reason']}" for x in result["out_of_scope"]]
     if result.get("overrides"):
         lines += ["", "## 코드가 덮어쓴 에이전트 판단", ""]
         lines += [f"- {x}" for x in result["overrides"]]

@@ -44,7 +44,7 @@ def test_normal_case(rules, submission):
     assert r["overall"] == "적합"
     assert c["C8"]["result"] == "충족" and c["C8"]["source"] == "AI"
     assert c["C9"]["result"] == "충족"
-    assert r["counts"] == {"충족": 9, "미충족": 0, "확인필요": 3, "참고": 1}
+    assert r["counts"] == {"충족": 9, "미충족": 0, "확인필요": 1, "참고": 1}
     assert r["warnings"] == [] and r["review_used"]
 
 
@@ -133,12 +133,12 @@ def test_fitness_formula():
 
 def test_fitness_in_result(rules, submission):
     r = build_result(rules, submission, review_with())
-    assert r["fitness"] == round((9 + 3 * 0.5) / 12 * 100, 1)   # 87.5
+    assert r["fitness"] == round((9 + 1 * 0.5) / 10 * 100, 1)   # 95.0
 
 
 def test_overall_rules():
     mk = lambda **kw: [{"id": k, "result": v} for k, v in kw.items()]
-    assert decide_overall(mk(C1="충족", C2="참고", C12="확인필요")) == "적합"
+    assert decide_overall(mk(C1="충족", C2="참고", C11="확인필요")) == "적합"
     assert decide_overall(mk(C1="미충족", C5="충족")) == "보완필요"
     assert decide_overall(mk(C1="미충족", C7="미충족")) == "부적합"
 
@@ -159,3 +159,29 @@ def test_parse_strips_citations_and_fences():
     assert parse_json_text('결과입니다: {"a": 1} 끝') == {"a": 1}
     with pytest.raises(ValueError):
         parse_json_text("JSON 아님")
+
+
+# 판정 범위 밖: 참석자 자격(C12) · 1일 1회·월 한도(C13)
+def test_out_of_scope_items_removed(rules, submission):
+    review = review_with()
+    review["check_id"] += ["C12", "C13"]
+    review["check_result"] += ["미충족", "확인필요"]
+    review["check_evidence"] += ["명단 없음", "이력 없음"]
+    review["admin_notes"] += ["C12: 참여학과 재학 여부를 명단과 대조하세요.", "같은 날 다른 회의비 청구가 있는지 확인하세요."]
+    review["fix_requests"] += ["C13: 1일 1회 기준을 확인해 주세요."]
+    r = build_result(rules, submission, review)
+    ids = [c["id"] for c in r["checks"]]
+    assert ids == [f"C{i}" for i in range(1, 12)]
+    assert not any("C12" in x or "C13" in x or "같은 날" in x for x in r["admin_notes"] + r["fix_requests"])
+    assert [x["name"] for x in r["out_of_scope"]] == ["참석자 자격", "1일 1회·월 한도"]
+
+
+def test_blank_results_keep_alignment(rules, submission):
+    """실제 Studio 출력: C12·C13 결과를 빈 문자열로 채워 13개를 맞춰 보냄"""
+    review = review_with(C8="미충족")
+    review["check_id"] += ["C12", "C13"]
+    review["check_result"] += ["", ""]
+    review["check_evidence"] += ["", ""]
+    r = build_result(rules, submission, review)
+    assert r["warnings"] == []
+    assert by_id(r)["C8"]["result"] == "미충족" and by_id(r)["C8"]["source"] == "AI"

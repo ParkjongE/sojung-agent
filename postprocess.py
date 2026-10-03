@@ -12,7 +12,7 @@ postprocess.py
 
 import re
 
-from review_builder import clean_list, compute_checks, first, flatten, to_number, won
+from review_builder import OUT_OF_SCOPE, clean_list, compute_checks, first, flatten, to_number, won
 
 MET, UNMET, UNSURE, REF, AI_PENDING = "충족", "미충족", "확인필요", "참고", "AI 판단"
 CRITICAL = ("C5", "C7", "C8")          # 하나라도 미충족이면 부적합
@@ -21,6 +21,7 @@ AI_DOWNGRADE_ONLY = ("C11",)           # AI가 '미충족'이라 할 때만 반�
 
 REVIEW_SCALARS = ("overall", "summary", "attendee_count", "per_person_amount")
 REVIEW_LISTS = ("check_id", "check_result", "check_evidence", "fix_requests", "admin_notes")
+PARALLEL_LISTS = ("check_id", "check_result", "check_evidence")
 
 ##################################################
 # 검사표 표시용 매핑
@@ -44,8 +45,6 @@ SUBMITTED_FIELDS = {
     "C9": ("meeting_topic", "meeting_content", "guide_text_remaining"),
     "C10": ("attendee_names", "attendee_signature"),
     "C11": ("photo_count", "photo_people_count", "photo_note"),
-    "C12": ("attendee_names",),
-    "C13": ("meeting_date", "meeting_round"),
 }
 
 FIX_TEMPLATES = {
@@ -178,7 +177,13 @@ def normalize_review(raw) -> tuple[dict, list]:
     data = _transpose_tables(raw)
     review = {k: first(data.get(k), "") for k in REVIEW_SCALARS}
     for k in REVIEW_LISTS:
-        review[k] = clean_list(data.get(k))
+        if k in PARALLEL_LISTS:
+            # 같은 순서로 짝을 맞추는 목록이라 빈 값도 자리를 지킨다 (빼면 순서가 밀림)
+            v = data.get(k)
+            v = v if isinstance(v, list) else ([v] if v not in (None, "") else [])
+            review[k] = ["" if x is None else str(x).strip() for x in v]
+        else:
+            review[k] = clean_list(data.get(k))
     review["check_id"] = [normalize_check_id(c) for c in review["check_id"]]
 
     n_id, n_res, n_ev = (len(review[k]) for k in ("check_id", "check_result", "check_evidence"))
@@ -194,6 +199,18 @@ def normalize_review(raw) -> tuple[dict, list]:
         review["checks"] = {cid: {"result": normalize_result(res), "raw": res, "evidence": ev}
                             for cid, res, ev in zip(review["check_id"], review["check_result"], evidence)}
     return review, warnings
+
+
+##################################################
+# 판정 범위 밖 항목 걸러내기
+##################################################
+
+# Studio Review Agent가 예전 C12·C13 기준으로 쓴 메모를 걸러낸다.
+OUT_OF_SCOPE_PATTERN = re.compile(r"\bC1[23]\b|참석자 자격|참여학과|재학|명단 대조|1일 1회|월 한도|같은 날")
+
+
+def in_scope(text: str) -> bool:
+    return not OUT_OF_SCOPE_PATTERN.search(text)
 
 
 ##################################################
@@ -343,8 +360,8 @@ def build_result(rules: dict, submission_raw: dict, review_raw=None,
                     for c in unmet]
     admin_notes = [f"[{c['id']} {c['name']}] {c['evidence']}" for c in unsure]
     if review:
-        fix_requests += [f for f in review["fix_requests"] if f not in fix_requests]
-        admin_notes += [n for n in review["admin_notes"] if n not in admin_notes]
+        fix_requests += [f for f in review["fix_requests"] if f not in fix_requests and in_scope(f)]
+        admin_notes += [n for n in review["admin_notes"] if n not in admin_notes and in_scope(n)]
 
     scored = len(checks) - counts[REF]
     summary = (f"{overall} — 검사 {scored}개 항목 중 충족 {counts[MET]}, "
@@ -368,6 +385,8 @@ def build_result(rules: dict, submission_raw: dict, review_raw=None,
         "admin_notes": admin_notes,
         "overrides": overrides,
         "warnings": warnings,
+        "out_of_scope": [{"name": n, "rule": rule_text(rules, {"id": "", "rule": key}), "reason": why}
+                         for n, key, why in OUT_OF_SCOPE],
         "compare": comparisons(rules, sub, calc),
         "rules": rules,
         "submission": submission_raw,
