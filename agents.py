@@ -8,15 +8,10 @@ Rule / Submission / Review Agent 실행 모듈
 """
 
 from agent_client import AgentClient
-from config import (
-    REVIEW_AGENT_ID, REVIEW_CONFIG_ID,
-    RULE_AGENT_ID, RULE_CONFIG_ID,
-    SUBMISSION_AGENT_ID, SUBMISSION_CONFIG_ID,
-)
 
-rule_agent = AgentClient("Rule Agent", RULE_AGENT_ID, RULE_CONFIG_ID)
-submission_agent = AgentClient("Submission Agent", SUBMISSION_AGENT_ID, SUBMISSION_CONFIG_ID)
-review_agent = AgentClient("Review Agent", REVIEW_AGENT_ID, REVIEW_CONFIG_ID)
+rule_agent = AgentClient("Rule Agent", "RULE_AGENT_ID", "RULE_CONFIG_ID")
+submission_agent = AgentClient("Submission Agent", "SUBMISSION_AGENT_ID", "SUBMISSION_CONFIG_ID")
+review_agent = AgentClient("Review Agent", "REVIEW_AGENT_ID", "REVIEW_CONFIG_ID")
 
 
 def analyze_rules(file_id: str) -> dict:

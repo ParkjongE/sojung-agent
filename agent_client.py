@@ -13,7 +13,7 @@ import time
 
 from openai import OpenAI
 
-from config import AGENT_TIMEOUT_SEC, UPSTAGE_API_KEY
+from config import AGENT_TIMEOUT_SEC, _secret
 
 ##################################################
 # OpenAI Client (Upstage는 OpenAI SDK와 호환)
@@ -25,10 +25,11 @@ _client = None
 def get_client() -> OpenAI:
     global _client
     if _client is None:
-        if not UPSTAGE_API_KEY:
+        api_key = _secret("UPSTAGE_API_KEY")   # 배포 후 Secrets를 넣어도 재시작 없이 반영
+        if not api_key:
             raise EnvironmentError("UPSTAGE_API_KEY가 설정되지 않았습니다.")
         _client = OpenAI(
-            api_key=UPSTAGE_API_KEY,
+            api_key=api_key,
             base_url="https://api.upstage.ai/v2",
             timeout=AGENT_TIMEOUT_SEC,
         )
@@ -77,12 +78,20 @@ def parse_json_text(text: str) -> dict:
 class AgentClient:
     """Studio Agent 실행 클래스"""
 
-    def __init__(self, name: str, agent_id: str, config_id: str = "1",
+    def __init__(self, name: str, agent_env: str, config_env: str,
                  timeout: int = AGENT_TIMEOUT_SEC):
         self.name = name
-        self.agent_id = agent_id
-        self.config_id = config_id
+        self.agent_env = agent_env
+        self.config_env = config_env
         self.timeout = timeout
+
+    @property
+    def agent_id(self) -> str:
+        return _secret(self.agent_env)
+
+    @property
+    def config_id(self) -> str:
+        return _secret(self.config_env, "1")
 
     def create_job(self, file_id: str) -> str:
         if not self.agent_id:
