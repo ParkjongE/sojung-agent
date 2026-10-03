@@ -147,11 +147,7 @@ def compute_checks(rules: dict, s: dict) -> tuple[dict, list]:
     add("C1", "동아리 구분 체크", "충족" if "없음" not in (t1, t2) else "미충족",
         f"증빙: {t1}, 첨부철: {t2}", "양식 기재사항")
 
-    # C2 동아리 분야: 참고만
-    add("C2", "동아리 분야 체크", "참고",
-        f"증빙: {first(s.get('club_field_checked'), '없음')}, "
-        f"첨부철: {first(s.get('form_club_field_checked'), '없음')} (전공동아리만 작성)",
-        "양식 기재사항")
+    # C2 동아리 분야: 전공동아리만 쓰는 칸이라 판정에 쓰지 않아 검사 항목에서 제외 (번호는 유지)
 
     # C3 동아리명 일치
     n1 = first(s.get("club_name"), "")
@@ -285,7 +281,7 @@ def create_review_input(rules_path=RULES_JSON, submission_path=SUBMISSION_JSON,
         Paragraph("C. 코드 자동 계산 결과", HEADING),
         kv_table(list(calc.items())),
 
-        Paragraph("D. 검사 결과표 (C1~C11)", HEADING),
+        Paragraph("D. 검사 결과표 (C1, C3~C11 · C2 동아리 분야는 제외)", HEADING),
         check_table(checks),
 
         Paragraph("E. 종합 판정 기준", HEADING),

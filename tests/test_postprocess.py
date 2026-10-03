@@ -44,7 +44,7 @@ def test_normal_case(rules, submission):
     assert r["overall"] == "적합"
     assert c["C8"]["result"] == "충족" and c["C8"]["source"] == "AI"
     assert c["C9"]["result"] == "충족"
-    assert r["counts"] == {"충족": 9, "미충족": 0, "확인필요": 1, "참고": 1}
+    assert r["counts"] == {"충족": 9, "미충족": 0, "확인필요": 1, "참고": 0}
     assert r["warnings"] == [] and r["review_used"]
 
 
@@ -138,7 +138,7 @@ def test_fitness_in_result(rules, submission):
 
 def test_overall_rules():
     mk = lambda **kw: [{"id": k, "result": v} for k, v in kw.items()]
-    assert decide_overall(mk(C1="충족", C2="참고", C11="확인필요")) == "적합"
+    assert decide_overall(mk(C1="충족", C3="충족", C11="확인필요")) == "적합"
     assert decide_overall(mk(C1="미충족", C5="충족")) == "보완필요"
     assert decide_overall(mk(C1="미충족", C7="미충족")) == "부적합"
 
@@ -171,7 +171,7 @@ def test_out_of_scope_items_removed(rules, submission):
     review["fix_requests"] += ["C13: 1일 1회 기준을 확인해 주세요."]
     r = build_result(rules, submission, review)
     ids = [c["id"] for c in r["checks"]]
-    assert ids == [f"C{i}" for i in range(1, 12)]
+    assert ids == ["C1"] + [f"C{i}" for i in range(3, 12)]
     assert not any("C12" in x or "C13" in x or "같은 날" in x for x in r["admin_notes"] + r["fix_requests"])
     assert [x["name"] for x in r["out_of_scope"]] == ["참석자 자격", "1일 1회·월 한도"]
 
@@ -185,3 +185,11 @@ def test_blank_results_keep_alignment(rules, submission):
     r = build_result(rules, submission, review)
     assert r["warnings"] == []
     assert by_id(r)["C8"]["result"] == "미충족" and by_id(r)["C8"]["source"] == "AI"
+
+
+def test_c2_removed(rules, submission):
+    review = review_with()
+    review["check_id"].insert(1, "C2"); review["check_result"].insert(1, "참고"); review["check_evidence"].insert(1, "")
+    r = build_result(rules, submission, review)
+    assert "C2" not in [c["id"] for c in r["checks"]] and len(r["checks"]) == 10
+    assert r["warnings"] == [] and by_id(r)["C8"]["source"] == "AI"

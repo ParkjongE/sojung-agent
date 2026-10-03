@@ -203,7 +203,8 @@ def section_summary(r: dict):
         a.metric("충족", c.get("충족", 0))
         b.metric("미충족", c.get("미충족", 0))
         d.metric("확인필요", c.get("확인필요", 0))
-        st.caption(f"'참고' {c.get('참고', 0)}개는 판정·적합도에서 제외")
+        if c.get("참고", 0):
+            st.caption(f"'참고' {c['참고']}개는 판정·적합도에서 제외")
 
     st.markdown(f"**{r['summary']}**")
     if r.get("ai_summary"):

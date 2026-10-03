@@ -29,13 +29,11 @@ PARALLEL_LISTS = ("check_id", "check_result", "check_evidence")
 
 FORM_RULE_TEXT = {
     "C1": "증빙서·영수증 첨부철의 '동아리 구분' 칸에 체크해야 한다.",
-    "C2": "전공동아리만 '동아리 분야'를 작성한다.",
     "C10": "참석자 성명 옆 서명란에 전원 서명해야 한다.",
 }
 
 SUBMITTED_FIELDS = {
     "C1": ("club_type_checked", "form_club_type_checked"),
-    "C2": ("club_field_checked", "form_club_field_checked"),
     "C3": ("club_name", "form_club_name"),
     "C4": ("receipt_present", "receipt_total", "receipt_merchant"),
     "C5": ("meeting_date", "receipt_date"),
@@ -206,7 +204,7 @@ def normalize_review(raw) -> tuple[dict, list]:
 ##################################################
 
 # Studio Review Agent가 예전 C12·C13 기준으로 쓴 메모를 걸러낸다.
-OUT_OF_SCOPE_PATTERN = re.compile(r"\bC1[23]\b|참석자 자격|참여학과|재학|명단 대조|1일 1회|월 한도|같은 날")
+OUT_OF_SCOPE_PATTERN = re.compile(r"\bC1[23]\b|\bC2\b|동아리 분야|참석자 자격|참여학과|재학|명단 대조|1일 1회|월 한도|같은 날")
 
 
 def in_scope(text: str) -> bool:
@@ -270,7 +268,7 @@ def compute_fitness(checks: list) -> float:
     return round((met + unsure * 0.5) / len(scored) * 100, 1)
 
 
-FITNESS_FORMULA = "(충족 + 확인필요 × 0.5) ÷ ('참고' 제외 항목 수) × 100"
+FITNESS_FORMULA = "(충족 + 확인필요 × 0.5) ÷ 검사 항목 수 × 100"
 
 
 ##################################################

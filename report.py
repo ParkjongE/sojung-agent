@@ -22,7 +22,7 @@ def build_report(result: dict) -> str:
         f"- 검토 시각: {result.get('created_at', '')}",
         f"- 판정: **{result['overall']}**",
         f"- 적합도: **{result['fitness']}%** — {result['fitness_formula']}",
-        f"- 충족 {c.get('충족', 0)} · 미충족 {c.get('미충족', 0)} · 확인필요 {c.get('확인필요', 0)} · 참고 {c.get('참고', 0)}",
+        f"- 충족 {c.get('충족', 0)} · 미충족 {c.get('미충족', 0)} · 확인필요 {c.get('확인필요', 0)}",
         "",
         f"> {result['summary']}",
         "",
