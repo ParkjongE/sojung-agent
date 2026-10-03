@@ -360,6 +360,7 @@ def section_raw(r: dict):
 
 
 def render_result(r: dict):
+    r = service.upgrade_result(r)
     st.divider()
     st.caption(f"{r['file_name']} · {r['created_at']} · run {r['run_id']}")
     section_summary(r)

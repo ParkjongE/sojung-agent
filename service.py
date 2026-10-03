@@ -95,6 +95,11 @@ def _run_demo(file_name: str, progress) -> dict:
                         file_name, started, demo=True, progress=progress)
 
 
+def upgrade_result(result: dict) -> dict:
+    from postprocess import upgrade_result as _upgrade
+    return _upgrade(result)
+
+
 def read_bytes(path: str) -> bytes:
     p = Path(path)
     return p.read_bytes() if p.exists() else b""

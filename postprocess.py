@@ -358,6 +358,34 @@ def comparisons(rules: dict, sub: dict, calc: dict) -> dict:
 # 최종 결과
 ##################################################
 
+def upgrade_result(result: dict) -> dict:
+    """예전 버전에서 만든 결과(세션에 남아 있던 것)도 지금 화면에서 그릴 수 있게 빈 칸을 채운다."""
+    checks = [c for c in result.get("checks", []) if c.get("id") in DISPLAY]
+    for no, c in enumerate(checks, 1):
+        c.setdefault("no", no)
+        label, criterion = DISPLAY[c["id"]]
+        c.setdefault("label", label)
+        c.setdefault("criterion", criterion)
+        c.setdefault("source", "코드")
+        c.setdefault("rule_text", c.get("rule", ""))
+        c.setdefault("submitted", "")
+    result["checks"] = checks
+    result.setdefault("fix_by_id", {c["id"]: FIX_TEMPLATES.get(c["id"], "해당 항목을 보완해 주세요.")
+                                    for c in checks if c.get("result") == UNMET})
+    for key in ("fix_requests", "admin_notes", "overrides", "warnings", "out_of_scope"):
+        result.setdefault(key, [])
+    result["fix_requests"] = [relabel(x) for x in result["fix_requests"]]
+    result["admin_notes"] = [relabel(x) for x in result["admin_notes"]]
+    result["summary"] = relabel(result.get("summary", ""))
+    result["ai_summary"] = relabel(result.get("ai_summary", ""))
+    # C2·C12·C13이 빠지기 전 결과면 개수·적합도·판정을 지금 기준으로 다시 계산
+    result["counts"] = count_results(checks)
+    result["fitness"] = compute_fitness(checks)
+    result["overall"] = decide_overall(checks)
+    result["fitness_formula"] = FITNESS_FORMULA
+    return result
+
+
 def build_result(rules: dict, submission_raw: dict, review_raw=None,
                  review_error: str | None = None) -> dict:
     sub = flatten(normalize_submission(submission_raw))
