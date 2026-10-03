@@ -193,3 +193,10 @@ def test_c2_removed(rules, submission):
     r = build_result(rules, submission, review)
     assert "C2" not in [c["id"] for c in r["checks"]] and len(r["checks"]) == 10
     assert r["warnings"] == [] and by_id(r)["C8"]["source"] == "AI"
+
+
+@pytest.mark.parametrize("people, expected", [("6", "충족"), ("7", "미충족"), ("5", "미충족"), ("확인불가", "확인필요")])
+def test_photo_people_must_equal_attendees(rules, submission, people, expected):
+    submission["evidence"][0]["photo_people_count"] = people   # 참석자 6명
+    r = build_result(rules, submission, review_with(C7="충족", C11="충족"))
+    assert by_id(r)["C11"]["result"] == expected

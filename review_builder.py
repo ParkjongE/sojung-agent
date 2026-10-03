@@ -207,8 +207,11 @@ def compute_checks(rules: dict, s: dict) -> tuple[dict, list]:
     if photos == 0:
         r11, ev11 = "미충족", "회의 사진 미첨부"
     elif people.isdigit():
-        r11 = "충족" if int(people) >= count else "미충족"
+        # 회의록 참석 인원과 정확히 같아야 충족 (많아도 적어도 미충족)
+        r11 = "충족" if int(people) == count else "미충족"
         ev11 = f"사진 {photos}장, 사진 속 {people}명 / 참석 {count}명"
+        if int(people) != count:
+            ev11 += " (인원 불일치)"
     else:
         r11 = "확인필요"
         ev11 = f"사진 {photos}장 첨부, 인원 식별 불분명 ({people})"
