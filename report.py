@@ -42,12 +42,12 @@ def build_report(result: dict) -> str:
         f"- 금액: 결제 {won(amt['total'])} / 기재 {won(amt['form_amount'])} / "
         f"{amt['count']}명 / 1인당 {per} / 한도 {won(amt['limit'])}",
         "", "## 전체 검사표", "",
-        "| ID | 항목 | 공고·양식 기준 | 제출 값 | 판정 | 근거 | 주체 |",
-        "|---|---|---|---|---|---|---|",
+        "| 번호 | 검사 항목 | 기준 | 공고·양식 원문 | 제출 값 | 판정 | 근거 | 주체 |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for k in result["checks"]:
         lines.append("| " + " | ".join(_cell(x) for x in (
-            k["id"], k["name"], k["rule_text"], k["submitted"],
+            k["no"], k["label"], k["criterion"], k["rule_text"], k["submitted"],
             k["result"], k["evidence"], k["by"])) + " |")
 
     if result.get("out_of_scope"):

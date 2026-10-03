@@ -169,7 +169,7 @@ def main(argv: list[str]) -> int:
     print(f"충족 {c['충족']} · 미충족 {c['미충족']} · 확인필요 {c['확인필요']} · 참고 {c['참고']}")
     print(f"요약   : {result['summary']}")
     for k in result["checks"]:
-        print(f"  {k['id']:>3} {k['result']:<5} {k['name']} — {k['evidence']}")
+        print(f"  {k['no']:>2}. {k['result']:<5} {k['label']} — {k['evidence']}")
     for w in result["warnings"] + result["overrides"]:
         print(f"  ! {w}")
     print(f"소요   : {result['elapsed_sec']}초")

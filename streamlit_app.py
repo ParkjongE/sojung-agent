@@ -230,14 +230,12 @@ def section_first(r: dict):
         st.markdown(f"##### 🔴 미충족 {len(unmet)}건 — 보완 요청")
         if not unmet:
             st.caption("없음")
-        fixes = {f.split("]")[0] + "]": f for f in r["fix_requests"]}
         for c in unmet:
-            fix = fixes.get(f"[{c['id']} {c['name']}]", "")
-            fix = fix.split("] ", 1)[-1] if fix else ""
+            fix = r.get("fix_by_id", {}).get(c["id"], "")
             st.markdown(
                 f'<div class="card" style="border-left-color:{RESULT_COLOR["미충족"]}">'
-                f'<h4>{c["id"]} {c["name"]}</h4><p>문제: {c["evidence"]}</p>'
-                f'<p>요청: {fix}</p><p class="muted">기준: {c["rule_text"]}</p></div>',
+                f'<h4>{c["label"]}</h4><p class="muted">기준: {c["criterion"]}</p><p>문제: {c["evidence"]}</p>'
+                f'<p>요청: {fix}</p><p class="muted">공고·양식: {c["rule_text"]}</p></div>',
                 unsafe_allow_html=True)
     with right:
         st.markdown(f"##### 🟠 확인필요 {len(unsure)}건 — 담당자가 볼 것")
@@ -246,8 +244,8 @@ def section_first(r: dict):
         for c in unsure:
             st.markdown(
                 f'<div class="card" style="border-left-color:{RESULT_COLOR["확인필요"]}">'
-                f'<h4>{c["id"]} {c["name"]}</h4><p>{c["evidence"]}</p>'
-                f'<p class="muted">기준: {c["rule_text"]}</p></div>',
+                f'<h4>{c["label"]}</h4><p class="muted">기준: {c["criterion"]}</p><p>{c["evidence"]}</p>'
+                f'<p class="muted">공고·양식: {c["rule_text"]}</p></div>',
                 unsafe_allow_html=True)
 
     oos = r.get("out_of_scope", [])
@@ -323,14 +321,16 @@ def section_people(r: dict):
 def section_table(r: dict):
     st.subheader("전체 검사표")
     df = pd.DataFrame([{
-        "ID": c["id"], "항목": c["name"], "공고·양식 기준": c["rule_text"],
+        "번호": c["no"], "검사 항목": c["label"], "기준": c["criterion"], "공고·양식 원문": c["rule_text"],
         "제출 서류 값": c["submitted"], "판정": c["result"], "근거": c["evidence"],
         "판정 주체": c["by"] if c.get("source") in ("코드", None) else f"{c['by']} ({c['source']})",
     } for c in r["checks"]])
     styled = df.style.map(lambda v: f"color:{RESULT_COLOR.get(v, 'inherit')};font-weight:700",
                           subset=["판정"])
     st.dataframe(styled, hide_index=True, width="stretch",
-                 column_config={"공고·양식 기준": st.column_config.TextColumn(width="large"),
+                 column_config={"번호": st.column_config.NumberColumn(width="small"),
+                                "기준": st.column_config.TextColumn(width="medium"),
+                                "공고·양식 원문": st.column_config.TextColumn(width="large"),
                                 "제출 서류 값": st.column_config.TextColumn(width="medium"),
                                 "근거": st.column_config.TextColumn(width="large")})
 
@@ -374,7 +374,7 @@ def render_result(r: dict):
     with st.expander("충족 항목만 보기", expanded=False):
         for c in r["checks"]:
             if c["result"] == "충족":
-                st.markdown(pill("충족", RESULT_COLOR["충족"]) + f"**{c['id']} {c['name']}** — {c['evidence']}",
+                st.markdown(pill("충족", RESULT_COLOR["충족"]) + f"**{c['label']}** — {c['evidence']}",
                             unsafe_allow_html=True)
     st.divider()
     section_raw(r)

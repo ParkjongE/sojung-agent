@@ -56,7 +56,7 @@ def test_code_overrides_agent(rules, submission):
     c = by_id(r)
     assert (c["C5"]["result"], c["C7"]["result"], c["C10"]["result"]) == ("충족", "충족", "충족")
     assert r["overall"] == "적합"
-    assert any("C7" in o for o in r["overrides"])
+    assert any(o.startswith("1인당 한도") for o in r["overrides"])
     assert any("종합 판정" in o for o in r["overrides"])
 
 
@@ -200,3 +200,18 @@ def test_photo_people_must_equal_attendees(rules, submission, people, expected):
     submission["evidence"][0]["photo_people_count"] = people   # 참석자 6명
     r = build_result(rules, submission, review_with(C7="충족", C11="충족"))
     assert by_id(r)["C11"]["result"] == expected
+
+
+def test_screen_shows_names_not_codes(rules, submission):
+    submission["meeting_date"] = ""                      # 날짜 일치 미충족 유도
+    review = review_with()
+    review["summary"] = ["C5에서 날짜가 비어 있고 C8은 충족입니다."]
+    review["fix_requests"] = ["C5: 회의 날짜를 적어 주세요."]
+    r = build_result(rules, submission, review)
+    assert [c["no"] for c in r["checks"]] == list(range(1, 11))
+    assert by_id(r)["C5"]["label"] == "날짜 일치"
+    shown = [r["summary"], r["ai_summary"], *r["fix_requests"], *r["admin_notes"], *r["overrides"]]
+    shown += [c["evidence"] for c in r["checks"]]
+    import re
+    assert not any(re.search(r"(?<![A-Za-z0-9])C\d", t) for t in shown), shown
+    assert "날짜 일치에서" in r["ai_summary"]

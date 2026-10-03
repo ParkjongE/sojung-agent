@@ -45,6 +45,30 @@ SUBMITTED_FIELDS = {
     "C11": ("photo_count", "photo_people_count", "photo_note"),
 }
 
+# 화면 표시용 — 내부 ID(C1, C3~C11)는 Studio Review Agent와 맞추려고 유지하고, 화면에는 이름·번호만 보인다.
+DISPLAY = {
+    "C1": ("동아리 구분", "증빙서 · 첨부철 모두 구분에 체크"),
+    "C3": ("동아리명 일치", "증빙서 동아리명 = 첨부철 동아리명"),
+    "C4": ("영수증 첨부", "영수증 부착, 결제금액 > 0"),
+    "C5": ("날짜 일치", "회의일 = 영수증 거래일"),
+    "C6": ("첨부철 기재", "첨부철에 쓴 날짜 · 금액 = 실제 영수증"),
+    "C7": ("1인당 한도", "결제금액 ÷ 참석 인원 ≤ 1인당 한도"),
+    "C8": ("회의장소", "음식점 · 카페 불가 (강의실 · 동아리실 · 회의실)"),
+    "C9": ("회의 내용", "주제 · 내용 · 결과를 구체적으로, 안내문 삭제"),
+    "C10": ("참석자 서명", "참석자 전원 서명"),
+    "C11": ("회의사진", "사진 속 인원 = 회의록 참석 인원, 카페 · 음식점 사진 불가"),
+}
+CODE_REF = re.compile(r"(?<![A-Za-z0-9])C(\d{1,2})(?!\d)")
+
+
+def relabel(text: str) -> str:
+    """에이전트 문장 속 'C5' 같은 내부 코드를 항목 이름으로 바꾼다."""
+    def name(m):
+        cid = f"C{int(m.group(1))}"
+        return DISPLAY[cid][0] if cid in DISPLAY else m.group(0)
+    return CODE_REF.sub(name, str(text))
+
+
 FIX_TEMPLATES = {
     "C1": "회의비 지출 증빙과 영수증 첨부철의 '동아리 구분'에 체크해 주세요.",
     "C3": "증빙서와 영수증 첨부철의 동아리명(팀명)을 같게 적어 주세요.",
@@ -95,6 +119,11 @@ def rule_text(rules: dict, check: dict) -> str:
             value = f"{label} {won(to_number(value))}"
         parts.append(str(value))
     return " / ".join(parts) or check["rule"]
+
+
+def calc_limit(rules: dict) -> float:
+    from review_builder import DEFAULT_PER_PERSON_LIMIT
+    return to_number(rules.get("meeting_per_person_limit")) or DEFAULT_PER_PERSON_LIMIT
 
 
 def submitted_text(sub: dict, cid: str) -> str:
@@ -204,7 +233,7 @@ def normalize_review(raw) -> tuple[dict, list]:
 ##################################################
 
 # Studio Review Agent가 예전 C12·C13 기준으로 쓴 메모를 걸러낸다.
-OUT_OF_SCOPE_PATTERN = re.compile(r"\bC1[23]\b|\bC2\b|동아리 분야|참석자 자격|참여학과|재학|명단 대조|1일 1회|월 한도|같은 날")
+OUT_OF_SCOPE_PATTERN = re.compile(r"(?<![A-Za-z0-9])C(?:1[23]|2)(?!\d)|동아리 분야|참석자 자격|참여학과|재학|명단 대조|1일 1회|월 한도|같은 날")
 
 
 def in_scope(text: str) -> bool:
@@ -237,7 +266,7 @@ def merge_checks(code_checks: list, review: dict | None) -> tuple[list, list]:
             c.update(result=UNMET, source="코드+AI",
                      evidence=f"{c['evidence']} / AI: {ai_ev or '사진 장소 부적합'}")
         elif ai_result and c["result"] in (MET, UNMET, UNSURE) and ai_result != c["result"]:
-            overrides.append(f"{c['id']} {c['name']}: Review Agent '{ai_result}' → 코드 판정 '{c['result']}' 유지")
+            overrides.append(f"{DISPLAY.get(c['id'], (c['name'],))[0]}: Review Agent '{ai_result}' → 코드 판정 '{c['result']}' 유지")
         merged.append(c)
     return merged, overrides
 
@@ -343,9 +372,15 @@ def build_result(rules: dict, submission_raw: dict, review_raw=None,
         warnings += w
 
     checks, overrides = merge_checks(code_checks, review)
-    for c in checks:
+    for no, c in enumerate(checks, 1):
+        c["no"] = no
+        c["label"], c["criterion"] = DISPLAY.get(c["id"], (c["name"], ""))
+        if c["id"] == "C7":
+            c["criterion"] = c["criterion"].replace("1인당 한도", won(calc_limit(rules)))
         c["rule_text"] = rule_text(rules, c)
         c["submitted"] = submitted_text(sub, c["id"])
+        if c["source"] == "AI":
+            c["evidence"] = relabel(c["evidence"])
 
     overall = decide_overall(checks)
     counts = count_results(checks)
@@ -354,18 +389,18 @@ def build_result(rules: dict, submission_raw: dict, review_raw=None,
     unmet = [c for c in checks if c["result"] == UNMET]
     unsure = [c for c in checks if c["result"] == UNSURE]
 
-    fix_requests = [f"[{c['id']} {c['name']}] {FIX_TEMPLATES.get(c['id'], '해당 항목을 보완해 주세요.')}"
-                    for c in unmet]
-    admin_notes = [f"[{c['id']} {c['name']}] {c['evidence']}" for c in unsure]
+    fix_by_id = {c["id"]: FIX_TEMPLATES.get(c["id"], "해당 항목을 보완해 주세요.") for c in unmet}
+    fix_requests = [f"[{c['label']}] {fix_by_id[c['id']]}" for c in unmet]
+    admin_notes = [f"[{c['label']}] {c['evidence']}" for c in unsure]
     if review:
-        fix_requests += [f for f in review["fix_requests"] if f not in fix_requests and in_scope(f)]
-        admin_notes += [n for n in review["admin_notes"] if n not in admin_notes and in_scope(n)]
+        fix_requests += [relabel(f) for f in review["fix_requests"] if in_scope(f) and relabel(f) not in fix_requests]
+        admin_notes += [relabel(n) for n in review["admin_notes"] if in_scope(n) and relabel(n) not in admin_notes]
 
     scored = len(checks) - counts[REF]
     summary = (f"{overall} — 검사 {scored}개 항목 중 충족 {counts[MET]}, "
                f"미충족 {counts[UNMET]}, 확인필요 {counts[UNSURE]}.")
     if unmet:
-        summary += " 미충족: " + ", ".join(f"{c['id']} {c['name']}" for c in unmet) + "."
+        summary += " 미충족: " + ", ".join(c["label"] for c in unmet) + "."
     ai_overall = (review or {}).get("overall", "")
     if ai_overall and ai_overall != overall:
         overrides.append(f"종합 판정: Review Agent '{ai_overall}' → 코드 재계산 '{overall}'")
@@ -376,10 +411,11 @@ def build_result(rules: dict, submission_raw: dict, review_raw=None,
         "fitness_formula": FITNESS_FORMULA,
         "counts": counts,
         "summary": summary,
-        "ai_summary": (review or {}).get("summary", ""),
+        "ai_summary": relabel((review or {}).get("summary", "")),
         "review_used": review is not None,
         "checks": checks,
         "fix_requests": fix_requests,
+        "fix_by_id": fix_by_id,
         "admin_notes": admin_notes,
         "overrides": overrides,
         "warnings": warnings,
