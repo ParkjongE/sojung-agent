@@ -1,0 +1,14 @@
+{
+"club_type_checked":"SW 전공",
+"club_field_checked":"없음",
+"club_name":"크롤러",
+"meeting_round":"1",
+"attendee_names":["김동욱","이건영","이환희","박종희","천서원","윤선진"],
+"attendee_signature":["서명있음","서명있음","서명있음","서명있음","서명있음","서명있음"],
+"meeting_date":"2026-10-01",
+"meeting_place":"전남대학교 AI융합대학 스터디룸 1",
+"meeting_topic":"취업 회사 리스트업 및 적합성 평가",
+"meeting_content":"팀원별로 지원 희망 기업을 조사해 리스트업하고, 기업별 요구 기술과 팀원 역량을 비교해 적합성을 평가함. 결과: 우선 지원 기업 5곳 선정, 다음 회의까지 기업별 포트폴리오 보완 계획 수립.",
+"evidence":[{"guide_text_remaining":"삭제됨","photo_count":1,"photo_people_count":"확인불가","photo_note":"실내 회의 공간으로 보이나 일부 인원이 가려져 인원 식별이 불분명함"}],
+"receipt":[{"form_club_type_checked":"SW 전공","form_club_field_checked":"없음","form_club_name":"크롤러","form_date":"2026-10-01","form_amount":120000,"receipt_present":"있음","receipt_merchant":"샘플 도시락","receipt_date":"2026-10-01","receipt_total":120000,"receipt_items":["도시락 x6"]}]
+}

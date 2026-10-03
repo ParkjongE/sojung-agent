@@ -1,0 +1,5 @@
+openai>=1.40
+streamlit>=1.40
+reportlab>=4.0
+python-dotenv>=1.0
+pandas>=2.0
